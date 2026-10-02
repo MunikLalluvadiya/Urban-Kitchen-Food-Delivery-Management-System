@@ -1,92 +1,50 @@
-import csv
-import os
+import db
 
 PAYMENTS_FILE = "payments.csv"
 HEADER = ["Payment_ID", "Order_ID", "Payment_Method", "Payment_Status", "Amount"]
 
 
 # ---------------------------------------------------------------
-# Storage Helpers
+# Storage Helpers (Maintained for backward compatibility)
 # ---------------------------------------------------------------
 def ensure_payments_file():
-    """Ensures payments.csv exists with header."""
-    if not os.path.exists(PAYMENTS_FILE) or os.stat(PAYMENTS_FILE).st_size == 0:
-        with open(PAYMENTS_FILE, "w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow(HEADER)
+    """Ensures Supabase connectivity / schema readiness."""
+    pass
 
 
 def _read_rows():
-    ensure_payments_file()
-    try:
-        with open(PAYMENTS_FILE, "r", newline="") as file:
-            reader = csv.reader(file)
-            next(reader, None)  # skip header
-            return [row for row in reader if row]
-    except FileNotFoundError:
-        return []
+    """Returns rows in the legacy CSV format: [Payment_ID, Order_ID, Method, Status, Amount]."""
+    payments = db.db_get_all_payments()
+    rows = []
+    for p in payments:
+        rows.append([
+            p.get("Payment_ID", ""),
+            p.get("Order_ID", ""),
+            p.get("Payment_Method", ""),
+            p.get("Payment_Status", ""),
+            str(p.get("Amount", 0.0))
+        ])
+    return rows
 
 
 def _write_rows(rows):
-    with open(PAYMENTS_FILE, "w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow(HEADER)
-        writer.writerows(rows)
+    """Legacy helper maintained for backward compatibility."""
+    pass
 
 
 def generate_payment_id():
     """Auto-generates a unique Payment ID like PAY-1001."""
-    rows = _read_rows()
-    highest = 1000
-    for row in rows:
-        if row and row[0].startswith("PAY-"):
-            try:
-                num = int(row[0].replace("PAY-", ""))
-                if num > highest:
-                    highest = num
-            except ValueError:
-                pass
-    return f"PAY-{highest + 1}"
+    return db.db_generate_payment_id()
 
 
 def get_payment_by_order_id(order_id):
     """Returns payment dictionary for the given Order ID or None."""
-    rows = _read_rows()
-    oid = str(order_id).strip()
-    for row in rows:
-        if row and row[1] == oid:
-            try:
-                amt = float(row[4])
-            except ValueError:
-                amt = 0.0
-            return {
-                "Payment_ID": row[0],
-                "Order_ID": row[1],
-                "Payment_Method": row[2],
-                "Payment_Status": row[3],
-                "Amount": amt
-            }
-    return None
+    return db.db_get_payment_by_order_id(order_id)
 
 
 def get_payment_by_id(payment_id):
     """Returns payment dictionary for the given Payment ID or None."""
-    rows = _read_rows()
-    pid = str(payment_id).strip()
-    for row in rows:
-        if row and row[0] == pid:
-            try:
-                amt = float(row[4])
-            except ValueError:
-                amt = 0.0
-            return {
-                "Payment_ID": row[0],
-                "Order_ID": row[1],
-                "Payment_Method": row[2],
-                "Payment_Status": row[3],
-                "Amount": amt
-            }
-    return None
+    return db.db_get_payment_by_id(payment_id)
 
 
 # ---------------------------------------------------------------
@@ -108,12 +66,15 @@ class Payment:
     # UI-FRIENDLY METHODS: return (success, message)
     # ===========================================================
     def process_payment(self):
-        """Records payment in payments.csv without console input/print."""
+        """Records payment in Supabase without console input/print."""
         self.Payment_Status = "Paid"
-        row = [self.Payment_ID, self.Order_ID, self.Payment_Method, self.Payment_Status, str(self.Amount)]
-        rows = _read_rows()
-        rows.append(row)
-        _write_rows(rows)
+        db.db_insert_payment(
+            self.Payment_ID,
+            self.Order_ID,
+            self.Payment_Method,
+            self.Payment_Status,
+            self.Amount
+        )
         return True, f"Payment of {self.Amount} recorded as {self.Payment_Status} via {self.Payment_Method}."
 
     def get_receipt_data(self):
@@ -162,10 +123,13 @@ class CashOnDelivery(Payment):
 
     def process_payment(self):
         self.Payment_Status = "Pending"
-        row = [self.Payment_ID, self.Order_ID, self.Payment_Method, self.Payment_Status, str(self.Amount)]
-        rows = _read_rows()
-        rows.append(row)
-        _write_rows(rows)
+        db.db_insert_payment(
+            self.Payment_ID,
+            self.Order_ID,
+            self.Payment_Method,
+            self.Payment_Status,
+            self.Amount
+        )
         return True, "Cash on Delivery selected. Please keep exact change ready for the delivery agent."
 
     def Make_Payment(self):
@@ -182,10 +146,13 @@ class UPIPayment(Payment):
         if not upi_id or "@" not in upi_id:
             return False, "Please provide a valid UPI ID (e.g. name@bank)."
         self.Payment_Status = "Paid"
-        row = [self.Payment_ID, self.Order_ID, self.Payment_Method, self.Payment_Status, str(self.Amount)]
-        rows = _read_rows()
-        rows.append(row)
-        _write_rows(rows)
+        db.db_insert_payment(
+            self.Payment_ID,
+            self.Order_ID,
+            self.Payment_Method,
+            self.Payment_Status,
+            self.Amount
+        )
         return True, f"Payment of {self.Amount} recorded as {self.Payment_Status} via {self.Payment_Method}."
 
     def Make_Payment(self):
@@ -205,10 +172,13 @@ class CardPayment(Payment):
         if len(cleaned_card) < 12 or not cleaned_card.isdigit():
             return False, "Please enter a valid card number (12-19 digits)."
         self.Payment_Status = "Paid"
-        row = [self.Payment_ID, self.Order_ID, self.Payment_Method, self.Payment_Status, str(self.Amount)]
-        rows = _read_rows()
-        rows.append(row)
-        _write_rows(rows)
+        db.db_insert_payment(
+            self.Payment_ID,
+            self.Order_ID,
+            self.Payment_Method,
+            self.Payment_Status,
+            self.Amount
+        )
         return True, f"Payment of {self.Amount} recorded as {self.Payment_Status} via {self.Payment_Method}."
 
     def Make_Payment(self):

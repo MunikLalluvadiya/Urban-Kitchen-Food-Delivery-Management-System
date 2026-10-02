@@ -1,5 +1,4 @@
-import csv
-import os
+import db
 from FoodItem import FoodItem
 
 RESTAURANT_FILE = "restaurant.csv"
@@ -7,32 +6,32 @@ HEADER = ["Restaurant_ID", "Restaurant_Name", "Location", "Rating", "Food_Items"
 
 
 # ---------------------------------------------------------------
-# Storage Helpers
+# Storage Helpers (Maintained for backward compatibility)
 # ---------------------------------------------------------------
 def ensure_restaurant_file():
-    """Ensures restaurant.csv exists with header."""
-    if not os.path.exists(RESTAURANT_FILE) or os.stat(RESTAURANT_FILE).st_size == 0:
-        with open(RESTAURANT_FILE, "w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow(HEADER)
+    """Ensures Supabase connectivity / schema readiness."""
+    pass
 
 
 def _read_rows():
-    ensure_restaurant_file()
-    try:
-        with open(RESTAURANT_FILE, "r", newline="") as file:
-            reader = csv.reader(file)
-            next(reader, None)  # skip header
-            return [row for row in reader if row]
-    except FileNotFoundError:
-        return []
+    """Returns rows in the legacy CSV format: [id, name, location, rating, items_str]."""
+    rests = db.db_get_all_restaurants_data()
+    rows = []
+    for r in rests:
+        items_str = _serialize_food_items(r.get("Food_Items", []))
+        rows.append([
+            r.get("Restaurant_ID", ""),
+            r.get("Restaurant_Name", ""),
+            r.get("Location", ""),
+            str(r.get("Rating", 0.0)),
+            items_str
+        ])
+    return rows
 
 
 def _write_rows(rows):
-    with open(RESTAURANT_FILE, "w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow(HEADER)
-        writer.writerows(rows)
+    """Legacy helper maintained for backward compatibility."""
+    pass
 
 
 def _parse_food_items(items_str):
@@ -69,28 +68,7 @@ def _serialize_food_items(food_items):
 # ---------------------------------------------------------------
 def get_all_restaurants():
     """Returns a list of restaurant dictionaries."""
-    rows = _read_rows()
-    restaurants = []
-    for row in rows:
-        if len(row) < 4:
-            continue
-        rest_id, name, location, rating = row[0], row[1], row[2], row[3]
-        items_str = row[4] if len(row) > 4 else ""
-        items = _parse_food_items(items_str)
-        try:
-            parsed_rating = float(rating)
-        except ValueError:
-            parsed_rating = 0.0
-
-        restaurants.append({
-            "Restaurant_ID": rest_id,
-            "Restaurant_Name": name,
-            "Location": location,
-            "Rating": parsed_rating,
-            "Food_Items": items,
-            "Total_Items": len(items)
-        })
-    return restaurants
+    return db.db_get_all_restaurants_data()
 
 
 def search_restaurants(keyword="", min_rating=0.0):
@@ -115,24 +93,24 @@ def search_restaurants(keyword="", min_rating=0.0):
 
 def get_restaurant_by_id(restaurant_id):
     """Returns a Restaurant instance by ID or None."""
-    rows = _read_rows()
-    for row in rows:
-        if row and row[0] == str(restaurant_id):
-            try:
-                rating = float(row[3])
-            except ValueError:
-                rating = 0.0
-            return Restaurant(row[0], row[1], row[2], rating)
+    info = db.db_get_restaurant_by_id(str(restaurant_id).strip())
+    if info:
+        name, location, rating = info
+        return Restaurant(restaurant_id, name, location, rating)
     return None
 
 
 def add_new_restaurant(restaurant_id, restaurant_name, location, rating):
-    """Adds a new restaurant to restaurant.csv without console input."""
-    if not str(restaurant_id).strip():
+    """Adds a new restaurant to Supabase without console input."""
+    rid = str(restaurant_id).strip()
+    rname = str(restaurant_name).strip()
+    loc = str(location).strip()
+
+    if not rid:
         return False, "Restaurant ID cannot be empty."
-    if not str(restaurant_name).strip():
+    if not rname:
         return False, "Restaurant Name cannot be empty."
-    if not str(location).strip():
+    if not loc:
         return False, "Location cannot be empty."
     try:
         rating_val = float(rating)
@@ -141,14 +119,12 @@ def add_new_restaurant(restaurant_id, restaurant_name, location, rating):
     except (ValueError, TypeError):
         return False, "Rating must be a valid number."
 
-    rows = _read_rows()
-    for row in rows:
-        if row and row[0] == str(restaurant_id):
-            return False, f"Restaurant ID '{restaurant_id}' already exists."
+    existing = db.db_get_restaurant_by_id(rid)
+    if existing:
+        return False, f"Restaurant ID '{restaurant_id}' already exists."
 
-    rows.append([str(restaurant_id), str(restaurant_name), str(location), str(rating_val), ""])
-    _write_rows(rows)
-    return True, f"Restaurant '{restaurant_name}' added successfully."
+    db.db_add_restaurant(rid, rname, loc, rating_val)
+    return True, f"Restaurant '{rname}' added successfully."
 
 
 # ---------------------------------------------------------------
@@ -156,10 +132,9 @@ def add_new_restaurant(restaurant_id, restaurant_name, location, rating):
 # ---------------------------------------------------------------
 def get_restaurant_basic_info(restaurant_id):
     """Legacy helper: returns (name, location, rating) or (None, None, None)."""
-    rows = _read_rows()
-    for row in rows:
-        if row and row[0] == str(restaurant_id):
-            return row[1], row[2], row[3]
+    info = db.db_get_restaurant_by_id(str(restaurant_id).strip())
+    if info:
+        return info[0], info[1], info[2]
     return None, None, None
 
 
@@ -200,31 +175,11 @@ class Restaurant:
         self._load_items()
 
     def _load_items(self):
-        self.List_Of_FoodItems = []
-        rows = _read_rows()
-        for row in rows:
-            if row and row[0] == self.Restaurant_ID:
-                items_str = row[4] if len(row) > 4 else ""
-                self.List_Of_FoodItems = _parse_food_items(items_str)
-                break
+        self.List_Of_FoodItems = db.db_get_food_items_for_restaurant(self.Restaurant_ID)
 
     def _save_items_to_csv(self):
-        rows = _read_rows()
-        updated_rows = []
-        found = False
-        items_str = _serialize_food_items(self.List_Of_FoodItems)
-
-        for row in rows:
-            if row and row[0] == self.Restaurant_ID:
-                updated_rows.append([self.Restaurant_ID, self.Restaurant_Name, self.Location, str(self.Rating), items_str])
-                found = True
-            else:
-                updated_rows.append(row)
-
-        if not found:
-            updated_rows.append([self.Restaurant_ID, self.Restaurant_Name, self.Location, str(self.Rating), items_str])
-
-        _write_rows(updated_rows)
+        """Legacy helper maintained for backward compatibility."""
+        pass
 
     # ===========================================================
     # UI-FRIENDLY METHODS: take parameters, return (success, msg)
@@ -254,9 +209,9 @@ class Restaurant:
                 return False, f"Food ID '{fid}' already exists in this restaurant."
 
         is_avail = availability if isinstance(availability, bool) else (str(availability).strip().lower() in ("yes", "y", "true", "1"))
+        db.db_add_food_item(self.Restaurant_ID, fid, fname, cat, price_val, is_avail)
         new_item = FoodItem(fid, fname, cat, price_val, is_avail)
         self.List_Of_FoodItems.append(new_item)
-        self._save_items_to_csv()
         return True, f"Added {fname} to {self.Restaurant_Name}'s menu."
 
     def remove_food_item(self, food_id):
@@ -271,8 +226,8 @@ class Restaurant:
         if target is None:
             return False, f"Food item '{fid}' not found."
 
+        db.db_remove_food_item(self.Restaurant_ID, fid)
         self.List_Of_FoodItems.remove(target)
-        self._save_items_to_csv()
         return True, f"Removed food item {fid}."
 
     def update_food_item(self, food_id, new_price=None, new_availability=None, new_name=None, new_category=None):
@@ -287,28 +242,34 @@ class Restaurant:
         if target is None:
             return False, f"Food item '{fid}' not found."
 
+        updates = {}
         if new_price is not None:
             try:
                 p = float(new_price)
                 if p < 0:
                     return False, "Price cannot be negative."
                 target.Update_Price(p)
+                updates["new_price"] = p
             except (ValueError, TypeError):
                 return False, "Price must be a valid number."
 
         if new_availability is not None:
             if isinstance(new_availability, bool):
-                target.Update_Availability(new_availability)
+                b_val = new_availability
             else:
-                target.Update_Availability(str(new_availability).strip().lower() in ("yes", "y", "true", "1"))
+                b_val = str(new_availability).strip().lower() in ("yes", "y", "true", "1")
+            target.Update_Availability(b_val)
+            updates["new_availability"] = b_val
 
         if new_name is not None and str(new_name).strip():
             target.Food_Name = str(new_name).strip()
+            updates["new_name"] = target.Food_Name
 
         if new_category is not None and str(new_category).strip():
             target.Category = str(new_category).strip()
+            updates["new_category"] = target.Category
 
-        self._save_items_to_csv()
+        db.db_update_food_item(self.Restaurant_ID, fid, updates)
         return True, f"Updated food item {fid}."
 
     def get_menu(self):

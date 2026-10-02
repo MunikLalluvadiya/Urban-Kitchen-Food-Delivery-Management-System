@@ -1,6 +1,6 @@
-import csv
 import hashlib
 import os
+import db
 
 USER_FILE = "user.csv"
 HEADER = ["User_Id", "Name", "Phone_Number", "Email", "Address", "Password"]
@@ -26,18 +26,13 @@ def _check_password(stored, password):
 
 
 def _read_rows():
-    try:
-        with open(USER_FILE, "r", newline="") as file:
-            return list(csv.reader(file))[1:]      # skip header
-    except FileNotFoundError:
-        return []
+    """Returns list of rows for backward compatibility."""
+    return db.db_get_all_user_rows()
 
 
 def _write_rows(rows):
-    with open(USER_FILE, "w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow(HEADER)
-        writer.writerows(rows)
+    """Legacy helper maintained for backward compatibility."""
+    pass
 
 
 class User:
@@ -48,83 +43,91 @@ class User:
     # Use these from Streamlit / Flask.
     # ===========================================================
     def register_user(self, user_id, name, phone, email, address, password):
-        rows = _read_rows()
-        for row in rows:
-            if row[3] == email:
-                return False, "This email is already registered."
-            if row[0] == str(user_id):
-                return False, "This User Id already exists."
+        clean_email = str(email).strip().lower()
+        clean_uid = str(user_id).strip()
 
-        rows.append([user_id, name, phone, email, address, _hash_password(password)])
-        _write_rows(rows)
+        if db.db_get_user_by_email(clean_email):
+            return False, "This email is already registered."
+        if db.db_get_user_by_id(clean_uid):
+            return False, "This User Id already exists."
 
-        self.User_Id = user_id
+        hashed = _hash_password(password)
+        db.db_insert_user(clean_uid, name, phone, clean_email, address, hashed)
+
+        self.User_Id = clean_uid
         self.Name = name
         self.Phone_Number = phone
-        self.Email = email
+        self.Email = clean_email
         self.Address = address
         self.Password = password
         return True, "Registered successfully."
 
     def login_user(self, email, password):
-        for row in _read_rows():
-            if row[3] == email:
-                if _check_password(row[5], password):
-                    self.User_Id = row[0]
-                    self.Name = row[1]
-                    self.Phone_Number = row[2]
-                    self.Email = row[3]
-                    self.Address = row[4]
-                    self.Password = password
-                    return True, "Login successful."
-                return False, "Incorrect password."
-        return False, "You are not a registered user. Please register first."
+        clean_email = str(email).strip().lower()
+        user = db.db_get_user_by_email(clean_email)
+        if not user:
+            return False, "You are not a registered user. Please register first."
+
+        if not _check_password(user.get("password", ""), password):
+            return False, "Incorrect password."
+
+        self.User_Id = str(user.get("user_id", ""))
+        self.Name = str(user.get("name", ""))
+        self.Phone_Number = str(user.get("phone_number", ""))
+        self.Email = str(user.get("email", ""))
+        self.Address = str(user.get("address", ""))
+        self.Password = password
+        return True, "Login successful."
 
     def get_profile(self, user_id):
         """Returns a dict without the password, or None if not found."""
-        for row in _read_rows():
-            if row[0] == str(user_id):
-                return {"User_Id": row[0], "Name": row[1], "Phone_Number": row[2],
-                        "Email": row[3], "Address": row[4]}
-        return None
+        user = db.db_get_user_by_id(str(user_id).strip())
+        if not user:
+            return None
+        return {
+            "User_Id": str(user.get("user_id", "")),
+            "Name": str(user.get("name", "")),
+            "Phone_Number": str(user.get("phone_number", "")),
+            "Email": str(user.get("email", "")),
+            "Address": str(user.get("address", ""))
+        }
 
     def update_field(self, email, password, field, new_value):
         """field must be one of: Name, Phone_Number, Email, Address"""
-        columns = {"Name": 1, "Phone_Number": 2, "Email": 3, "Address": 4}
-        if field not in columns:
+        valid_fields = ["Name", "Phone_Number", "Email", "Address"]
+        if field not in valid_fields:
             return False, "You can only change Name, Phone_Number, Email or Address."
 
-        rows = _read_rows()
-        target = None
-        for row in rows:
-            if row[3] == email:
-                target = row
-                break
-        if target is None:
+        clean_email = str(email).strip().lower()
+        user = db.db_get_user_by_email(clean_email)
+        if not user:
             return False, "You are not a registered user. Please register first."
-        if not _check_password(target[5], password):
+        if not _check_password(user.get("password", ""), password):
             return False, "Incorrect password."
 
-        if field == "Email" and any(r[3] == new_value for r in rows):
-            return False, "That email is already used by another account."
+        if field == "Email":
+            new_email = str(new_value).strip().lower()
+            existing = db.db_get_user_by_email(new_email)
+            if existing and existing.get("user_id") != user.get("user_id"):
+                return False, "That email is already used by another account."
 
-        target[columns[field]] = new_value
-        _write_rows(rows)
-
+        db.db_update_user_field(clean_email, field, new_value)
         setattr(self, field, new_value)
         return True, "Profile updated successfully."
 
     def set_password(self, email, current_password, new_password):
-        rows = _read_rows()
-        for row in rows:
-            if row[3] == email:
-                if not _check_password(row[5], current_password):
-                    return False, "Incorrect current password."
-                row[5] = _hash_password(new_password)
-                _write_rows(rows)
-                self.Password = new_password
-                return True, "Password changed successfully."
-        return False, "Email not found."
+        clean_email = str(email).strip().lower()
+        user = db.db_get_user_by_email(clean_email)
+        if not user:
+            return False, "Email not found."
+
+        if not _check_password(user.get("password", ""), current_password):
+            return False, "Incorrect current password."
+
+        new_hashed = _hash_password(new_password)
+        db.db_update_user_password(clean_email, new_hashed)
+        self.Password = new_password
+        return True, "Password changed successfully."
 
     # ===========================================================
     # CONSOLE METHODS: same names as before so main.py keeps working.

@@ -7,6 +7,8 @@ load_dotenv()
 # Application Configuration (read from environment / .env file)
 SECRET_KEY = os.environ.get("SECRET_KEY")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 # Branding
 BRAND_NAME = "URBAN KITCHEN – Food & Beverage"

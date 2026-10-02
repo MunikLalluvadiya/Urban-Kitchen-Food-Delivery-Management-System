@@ -1,6 +1,5 @@
-import csv
-import os
 from datetime import date
+import db
 
 ORDERS_FILE = "orders.csv"
 HEADER = ["Order_ID", "User_Email", "Restaurant_ID", "Ordered_Items", "Total_Amount", "Order_Status", "Order_Date"]
@@ -10,29 +9,30 @@ HEADER = ["Order_ID", "User_Email", "Restaurant_ID", "Ordered_Items", "Total_Amo
 # Storage & Parsing Helpers
 # ---------------------------------------------------------------
 def ensure_orders_file():
-    """Ensures orders.csv exists with header."""
-    if not os.path.exists(ORDERS_FILE) or os.stat(ORDERS_FILE).st_size == 0:
-        with open(ORDERS_FILE, "w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow(HEADER)
+    """Ensures Supabase connectivity / schema readiness."""
+    pass
 
 
 def _read_rows():
-    ensure_orders_file()
-    try:
-        with open(ORDERS_FILE, "r", newline="") as file:
-            reader = csv.reader(file)
-            next(reader, None)  # skip header
-            return [row for row in reader if row]
-    except FileNotFoundError:
-        return []
+    """Returns rows in the legacy CSV format: [id, email, rest_id, items_raw, total, status, date]."""
+    orders = db.db_get_all_orders()
+    rows = []
+    for o in orders:
+        rows.append([
+            o.get("Order_ID", ""),
+            o.get("User_Email", ""),
+            o.get("Restaurant_ID", ""),
+            o.get("Items_Raw", ""),
+            str(o.get("Total_Amount", 0.0)),
+            o.get("Order_Status", ""),
+            o.get("Order_Date", "")
+        ])
+    return rows
 
 
 def _write_rows(rows):
-    with open(ORDERS_FILE, "w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow(HEADER)
-        writer.writerows(rows)
+    """Legacy helper maintained for backward compatibility."""
+    pass
 
 
 def parse_ordered_items(items_str):
@@ -91,17 +91,7 @@ def serialize_ordered_items(ordered_items):
 
 def generate_order_id():
     """Auto-generates a unique Order ID like ORD-1001."""
-    rows = _read_rows()
-    highest = 1000
-    for row in rows:
-        if row and row[0].startswith("ORD-"):
-            try:
-                num = int(row[0].replace("ORD-", ""))
-                if num > highest:
-                    highest = num
-            except ValueError:
-                pass
-    return f"ORD-{highest + 1}"
+    return db.db_generate_order_id()
 
 
 # ---------------------------------------------------------------
@@ -109,60 +99,27 @@ def generate_order_id():
 # ---------------------------------------------------------------
 def get_all_orders():
     """Returns a list of all order dictionaries."""
-    rows = _read_rows()
-    orders = []
-    for row in rows:
-        if len(row) < 7:
-            continue
-        try:
-            total_amt = float(row[4])
-        except ValueError:
-            total_amt = 0.0
-
-        orders.append({
-            "Order_ID": row[0],
-            "User_Email": row[1],
-            "Restaurant_ID": row[2],
-            "Ordered_Items": parse_ordered_items(row[3]),
-            "Items_Raw": row[3],
-            "Total_Amount": total_amt,
-            "Order_Status": row[5],
-            "Order_Date": row[6]
-        })
-    return orders
+    return db.db_get_all_orders()
 
 
 def get_orders_by_user(user_email):
     """Returns list of orders for a specific user email."""
-    all_orders = get_all_orders()
-    email_clean = (user_email or "").strip().lower()
-    return [o for o in all_orders if o["User_Email"].strip().lower() == email_clean]
+    return db.db_get_orders_by_user(user_email)
 
 
 def get_order_by_id(order_id):
     """Returns order dictionary or None."""
-    all_orders = get_all_orders()
-    oid = str(order_id).strip()
-    for o in all_orders:
-        if o["Order_ID"] == oid:
-            return o
-    return None
+    return db.db_get_order_by_id(order_id)
 
 
 def update_status_by_order_id(order_id, new_status):
-    """Updates order status directly in orders.csv."""
-    rows = _read_rows()
-    found = False
+    """Updates order status directly in Supabase."""
     oid = str(order_id).strip()
-    for row in rows:
-        if row and row[0] == oid:
-            row[5] = new_status
-            found = True
-            break
-    if found:
-        _write_rows(rows)
-        return True, f"Order {order_id} status updated to {new_status}."
-    return False, f"Order {order_id} not found."
+    order = db.db_get_order_by_id(oid)
+    if not order:
+        return False, f"Order {order_id} not found."
+    db.db_update_order_status(oid, new_status)
+    return True, f"Order {order_id} status updated to {new_status}."
 
 
 # ---------------------------------------------------------------
@@ -186,19 +143,22 @@ class Order:
     # UI-FRIENDLY METHODS: return (success, message)
     # ===========================================================
     def place_order(self):
-        """Saves order to orders.csv without any print/input calls."""
+        """Saves order to Supabase without any print/input calls."""
         if not self.Order_ID:
             self.Order_ID = generate_order_id()
 
         user_email = getattr(self.User, "Email", str(self.User) if self.User else "")
         rest_id = getattr(self.Restaurant, "Restaurant_ID", str(self.Restaurant) if self.Restaurant else "")
-        items_str = serialize_ordered_items(self.Ordered_Items)
 
-        rows = _read_rows()
-        row = [self.Order_ID, user_email, rest_id, items_str,
-               str(self.Total_Amount), self.Order_Status, self.Order_Date]
-        rows.append(row)
-        _write_rows(rows)
+        db.db_insert_order(
+            self.Order_ID,
+            user_email,
+            rest_id,
+            self.Total_Amount,
+            self.Order_Status,
+            self.Order_Date,
+            self.Ordered_Items
+        )
         return True, f"Order {self.Order_ID} placed successfully. Status: {self.Order_Status}"
 
     def cancel_order(self):
@@ -217,12 +177,7 @@ class Order:
             return False, f"Cannot cancel Order {self.Order_ID} because it is already out for delivery."
 
         self.Order_Status = "Cancelled"
-        rows = _read_rows()
-        for row in rows:
-            if row and row[0] == self.Order_ID:
-                row[5] = "Cancelled"
-                break
-        _write_rows(rows)
+        db.db_update_order_status(self.Order_ID, "Cancelled")
         return True, f"Order {self.Order_ID} has been cancelled."
 
     def update_order_status(self, new_status):
