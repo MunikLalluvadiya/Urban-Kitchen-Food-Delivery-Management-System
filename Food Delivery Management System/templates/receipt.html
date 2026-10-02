@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Order Receipt #{{ order.Order_ID }} – Urban Kitchen{% endblock %}
+
+{% block content %}
+<section style="padding: 40px 0 80px; background-color: var(--mint-light);">
+  <div class="container">
+    <div class="receipt-wrapper">
+      <div class="receipt-card">
+        <!-- Receipt Header -->
+        <div class="receipt-header">
+          <div class="receipt-success-icon">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <div class="section-tag" style="margin-bottom: 8px;">Order Confirmed</div>
+          <h1 style="font-size: 24px; margin-bottom: 6px;">Thank You for Your Order!</h1>
+          <p style="color: var(--text-muted); font-size: 13px;">
+            A confirmation receipt has been recorded. Your meal is being prepared by our artisanal kitchen.
+          </p>
+        </div>
+
+        <!-- Order Meta Grid -->
+        <div class="receipt-meta-grid">
+          <div class="receipt-meta-item">
+            <div class="meta-label">Order ID</div>
+            <div class="meta-value" style="color: var(--primary);">{{ order.Order_ID }}</div>
+          </div>
+          <div class="receipt-meta-item">
+            <div class="meta-label">Payment ID</div>
+            <div class="meta-value">{{ payment.Payment_ID if payment else 'Recorded' }}</div>
+          </div>
+          <div class="receipt-meta-item">
+            <div class="meta-label">Date & Time</div>
+            <div class="meta-value">{{ order.Order_Date }}</div>
+          </div>
+          <div class="receipt-meta-item">
+            <div class="meta-label">Order Status</div>
+            <div class="meta-value">
+              <span class="badge badge-available">{{ order.Order_Status }}</span>
+            </div>
+          </div>
+          <div class="receipt-meta-item">
+            <div class="meta-label">Payment Method</div>
+            <div class="meta-value">{{ payment.Payment_Method if payment else 'Pending' }}</div>
+          </div>
+          <div class="receipt-meta-item">
+            <div class="meta-label">Payment Status</div>
+            <div class="meta-value">
+              {% if payment and payment.Payment_Status == 'Paid' %}
+                <span class="badge badge-available">Paid</span>
+              {% else %}
+                <span class="badge" style="background: #FFF8E6; color: #B7791F;">Cash on Delivery (Pending)</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Restaurant Info -->
+        {% if restaurant %}
+          <div style="background-color: var(--mint-light); border-radius: var(--radius-sm); padding: 14px 18px; margin-bottom: 24px; border: 1px solid var(--mint-border);">
+            <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--primary); letter-spacing: 0.5px;">Catering Restaurant</div>
+            <div style="font-size: 15px; font-weight: 700; color: var(--text-main);">{{ restaurant.Restaurant_Name }}</div>
+            <div style="font-size: 12px; color: var(--text-muted);">{{ restaurant.Location }}</div>
+          </div>
+        {% endif %}
+
+        <!-- Itemized Table -->
+        <div style="margin-bottom: 24px;">
+          <table class="cart-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th style="text-align: right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in order.Ordered_Items %}
+                <tr>
+                  <td style="font-weight: 600; font-size: 14px;">{{ item.Food_Name }}</td>
+                  <td>₹{{ "%.2f"|format(item.Price) }}</td>
+                  <td>{{ item.Quantity }}</td>
+                  <td style="text-align: right; font-weight: 600;">₹{{ "%.2f"|format(item.Subtotal) }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Bill Calculations -->
+        <div style="border-top: 1px solid var(--border-subtle); padding-top: 16px; margin-bottom: 28px;">
+          <div class="bill-row">
+            <span>Subtotal</span>
+            <span>₹{{ "%.2f"|format(items_subtotal) }}</span>
+          </div>
+          <div class="bill-row">
+            <span>Delivery Fee</span>
+            <span>₹{{ "%.2f"|format(delivery_charge) }}</span>
+          </div>
+          <div class="bill-row">
+            <span>GST & Service Taxes (5%)</span>
+            <span>₹{{ "%.2f"|format(gst_amount) }}</span>
+          </div>
+          <div class="bill-row total-row">
+            <span>Grand Total Paid / Due</span>
+            <span class="bill-total-price">₹{{ "%.2f"|format(grand_total) }}</span>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button onclick="window.print()" class="btn btn-outline" style="flex: 1;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            <span>Print Receipt</span>
+          </button>
+          <a href="{{ url_for('orders') }}" class="btn btn-primary" style="flex: 1;">
+            Track Order
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

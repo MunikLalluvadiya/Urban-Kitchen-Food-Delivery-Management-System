@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Delivery Agent Dashboard – Urban Kitchen{% endblock %}
+
+{% block content %}
+<section style="padding: 40px 0 80px; background-color: var(--mint-light);">
+  <div class="container">
+
+    <!-- Agent Header Bar -->
+    <div class="restaurant-hero-header" style="margin-bottom: 32px;">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div style="width: 56px; height: 56px; border-radius: 50%; background-color: var(--primary); color: #FFFFFF; font-size: 24px; display: flex; align-items: center; justify-content: center; font-weight: 700;">
+          🛵
+        </div>
+        <div>
+          <span class="section-tag" style="margin-bottom: 4px;">Active Partner</span>
+          <h1 style="font-size: 22px; margin-bottom: 2px;">{{ agent.Name }}</h1>
+          <div style="font-size: 13px; color: var(--text-muted);">
+            ID: <strong>{{ agent.Agent_ID }}</strong> • Vehicle: <strong>{{ agent.Vehicle_Number }}</strong> • Phone: <strong>{{ agent.Phone_Number }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <span class="badge badge-available" style="font-size: 13px; padding: 6px 14px;">
+          ● Agent Online
+        </span>
+        <a href="{{ url_for('delivery_logout') }}" class="btn btn-secondary btn-sm" style="color: #C53030;">
+          Sign Out
+        </a>
+      </div>
+    </div>
+
+    <!-- Active In-Transit Orders -->
+    <div style="margin-bottom: 40px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <h2 style="font-size: 20px;">Active Deliveries in Transit ({{ active_orders|length }})</h2>
+        <span style="font-size: 13px; color: var(--text-muted);">Orders currently on the road</span>
+      </div>
+
+      {% if active_orders %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+          {% for o in active_orders %}
+            <div class="order-card" style="border-left: 4px solid #2B6CB0;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div>
+                  <span class="section-tag" style="margin-bottom: 4px;">{{ o.Order_ID }}</span>
+                  <h3 style="font-size: 16px;">{{ o.Restaurant.Restaurant_Name if o.Restaurant else o.Restaurant_ID }}</h3>
+                  <div style="font-size: 12px; color: var(--text-muted);">Recipient: {{ o.User_Email }}</div>
+                </div>
+                <span class="badge" style="background: var(--status-out-bg); color: var(--status-out-text);">
+                  {{ o.Order_Status }}
+                </span>
+              </div>
+
+              <div style="margin-bottom: 16px; font-size: 13px; color: var(--text-body);">
+                <strong>Items:</strong>
+                {% for item in o.Ordered_Items %}
+                  {{ item.Food_Name }} &times; {{ item.Quantity }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              </div>
+
+              <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px; display: flex; gap: 8px;">
+                <!-- Mark Complete Delivery -->
+                <form action="{{ url_for('delivery_complete', order_id=o.Order_ID) }}" method="POST" style="flex: 1; margin: 0;">
+                  <button type="submit" class="btn btn-primary btn-sm btn-block">
+                    ✓ Complete Delivery
+                  </button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="background: #FFFFFF; border-radius: var(--radius-md); padding: 30px; text-align: center; border: 1px dashed var(--border-subtle); color: var(--text-muted); font-size: 14px;">
+          No orders currently in transit. Accept available orders below.
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Available Deliveries Waiting for Pickup -->
+    <div style="margin-bottom: 40px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <h2 style="font-size: 20px;">Available Catering Deliveries ({{ available_orders|length }})</h2>
+        <span style="font-size: 13px; color: var(--text-muted);">Orders preparing or ready at restaurants</span>
+      </div>
+
+      {% if available_orders %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+          {% for o in available_orders %}
+            <div class="order-card" style="border-left: 4px solid var(--primary);">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div>
+                  <span class="section-tag" style="margin-bottom: 4px;">{{ o.Order_ID }}</span>
+                  <h3 style="font-size: 16px;">{{ o.Restaurant.Restaurant_Name if o.Restaurant else o.Restaurant_ID }}</h3>
+                  <div style="font-size: 12px; color: var(--text-muted);">Location: {{ o.Restaurant.Location if o.Restaurant else 'Downtown' }}</div>
+                </div>
+                <div style="text-align: right;">
+                  <span class="badge" style="background: var(--status-prep-bg); color: var(--status-prep-text);">
+                    {{ o.Order_Status }}
+                  </span>
+                  <div style="font-weight: 700; color: var(--primary); font-size: 15px; margin-top: 4px;">
+                    ₹{{ "%.2f"|format(o.Total_Amount) }}
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-bottom: 16px; font-size: 13px; color: var(--text-body);">
+                <strong>Items:</strong>
+                {% for item in o.Ordered_Items %}
+                  {{ item.Food_Name }} &times; {{ item.Quantity }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              </div>
+
+              <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px; display: flex; gap: 8px;">
+                {% if o.Order_Status == 'Preparing' %}
+                  <form action="{{ url_for('delivery_accept', order_id=o.Order_ID) }}" method="POST" style="flex: 1; margin: 0;">
+                    <button type="submit" class="btn btn-outline btn-sm btn-block">
+                      Accept Delivery
+                    </button>
+                  </form>
+                {% elif o.Order_Status == 'Accepted' %}
+                  <form action="{{ url_for('delivery_update_status', order_id=o.Order_ID) }}" method="POST" style="flex: 1; margin: 0;">
+                    <input type="hidden" name="status" value="Out for Delivery">
+                    <button type="submit" class="btn btn-primary btn-sm btn-block">
+                      Start Transit (Out for Delivery)
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="background: #FFFFFF; border-radius: var(--radius-md); padding: 40px; text-align: center; border: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 14px;">
+          All orders have been assigned or delivered! Check back when new orders arrive.
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Completed Deliveries Section -->
+    <div>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <h2 style="font-size: 20px;">Completed Deliveries History ({{ completed_orders|length }})</h2>
+      </div>
+
+      {% if completed_orders %}
+        <div class="cart-table-card">
+          <table class="cart-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Restaurant</th>
+                <th>Customer</th>
+                <th>Total</th>
+                <th>Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for o in completed_orders[:10] %}
+                <tr>
+                  <td style="font-weight: 600; color: var(--primary);">{{ o.Order_ID }}</td>
+                  <td>{{ o.Restaurant.Restaurant_Name if o.Restaurant else o.Restaurant_ID }}</td>
+                  <td>{{ o.User_Email }}</td>
+                  <td style="font-weight: 600;">₹{{ "%.2f"|format(o.Total_Amount) }}</td>
+                  <td>{{ o.Order_Date }}</td>
+                  <td>
+                    <span class="badge badge-available">Delivered</span>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div style="background: #FFFFFF; border-radius: var(--radius-md); padding: 30px; text-align: center; border: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 14px;">
+          No completed deliveries recorded yet.
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+</section>
+{% endblock %}

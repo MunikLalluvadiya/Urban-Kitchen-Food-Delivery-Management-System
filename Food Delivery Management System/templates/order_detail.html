@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order.Order_ID }} Details – Urban Kitchen{% endblock %}
+
+{% block content %}
+<section style="padding: 40px 0 80px; background-color: var(--mint-light);">
+  <div class="container">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
+      <div>
+        <a href="{{ url_for('orders') }}" style="font-size: 13px; color: var(--primary); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 8px;">
+          &larr; Back to All Orders
+        </a>
+        <h1 class="section-heading" style="margin-bottom: 0;">Order #{{ order.Order_ID }}</h1>
+      </div>
+
+      <div>
+        <a href="{{ url_for('receipt', order_id=order.Order_ID) }}" class="btn btn-outline btn-sm">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          <span>View Invoice / Receipt</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Live Status Tracker -->
+    {% if order.Order_Status != 'Cancelled' %}
+      <div class="cart-table-card" style="margin-bottom: 28px;">
+        <h3 style="font-size: 16px; margin-bottom: 12px; color: var(--text-main);">Order Tracking</h3>
+        
+        <div class="order-timeline">
+          <!-- Step 1: Placed -->
+          <div class="timeline-step completed">
+            <div class="step-node">✓</div>
+            <div class="step-label">Placed</div>
+          </div>
+
+          <!-- Step 2: Preparing / Accepted -->
+          <div class="timeline-step {% if step_index >= 1 %}active completed{% endif %}">
+            <div class="step-node">{% if step_index >= 2 %}✓{% else %}2{% endif %}</div>
+            <div class="step-label">Preparing</div>
+          </div>
+
+          <!-- Step 3: Out for Delivery -->
+          <div class="timeline-step {% if step_index >= 3 %}active completed{% endif %}">
+            <div class="step-node">{% if step_index >= 3 %}✓{% else %}3{% endif %}</div>
+            <div class="step-label">On Route</div>
+          </div>
+
+          <!-- Step 4: Delivered -->
+          <div class="timeline-step {% if step_index >= 4 %}active completed{% endif %}">
+            <div class="step-node">{% if step_index >= 4 %}✓{% else %}4{% endif %}</div>
+            <div class="step-label">Delivered</div>
+          </div>
+        </div>
+
+        <div style="background-color: var(--mint-bg); border-radius: var(--radius-sm); padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;">
+          <span style="font-size: 13px; color: var(--text-body);">Current Status: <strong>{{ order.Order_Status }}</strong></span>
+          <span style="font-size: 12px; color: var(--text-muted);">Last updated on {{ order.Order_Date }}</span>
+        </div>
+      </div>
+    {% else %}
+      <div class="alert alert-danger" style="margin-bottom: 28px;">
+        <strong>Order Cancelled:</strong> This order was cancelled and will not be prepared or delivered.
+      </div>
+    {% endif %}
+
+    <!-- Order Items & Billing Grid -->
+    <div style="display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 28px; align-items: flex-start;">
+      <!-- Items Table -->
+      <div class="cart-table-card">
+        <h3 style="font-size: 17px; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+          Ordered Items
+        </h3>
+
+        <table class="cart-table">
+          <thead>
+            <tr>
+              <th>Dish</th>
+              <th>Unit Price</th>
+              <th>Quantity</th>
+              <th style="text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in order.Ordered_Items %}
+              <tr>
+                <td style="font-weight: 600; font-size: 14px;">{{ item.Food_Name }}</td>
+                <td>₹{{ "%.2f"|format(item.Price) }}</td>
+                <td>{{ item.Quantity }}</td>
+                <td style="text-align: right; font-weight: 600; color: var(--primary);">
+                  ₹{{ "%.2f"|format(item.Subtotal) }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <!-- Cancellation Option if eligible -->
+        {% if order.Order_Status in ('Preparing', 'Accepted') %}
+          <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; color: var(--text-muted);">Change of plans? You can cancel before kitchen dispatch.</span>
+            <form action="{{ url_for('cancel_order', order_id=order.Order_ID) }}" method="POST" onsubmit="return confirm('Are you sure you want to cancel order #{{ order.Order_ID }}?');" style="margin: 0;">
+              <button type="submit" class="btn btn-secondary btn-sm" style="color: #C53030;">
+                Cancel This Order
+              </button>
+            </form>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Summary & Payment Info -->
+      <div>
+        <!-- Restaurant & Destination Card -->
+        <div class="cart-table-card" style="margin-bottom: 24px;">
+          <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--text-main);">Delivery Information</h4>
+          {% if restaurant %}
+            <div style="margin-bottom: 12px;">
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Restaurant</div>
+              <div style="font-weight: 600; color: var(--text-main); font-size: 14px;">{{ restaurant.Restaurant_Name }}</div>
+              <div style="font-size: 12px; color: var(--text-muted);">{{ restaurant.Location }}</div>
+            </div>
+          {% endif %}
+
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Recipient</div>
+            <div style="font-size: 13px; color: var(--text-body);">{{ order.User_Email }}</div>
+          </div>
+        </div>
+
+        <!-- Payment Details Card -->
+        <div class="bill-summary-card">
+          <h4 style="font-size: 15px; margin-bottom: 14px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">Payment Details</h4>
+          
+          <div class="bill-row">
+            <span>Payment Method</span>
+            <span style="font-weight: 600;">{{ payment.Payment_Method if payment else 'Not specified' }}</span>
+          </div>
+
+          <div class="bill-row">
+            <span>Payment Status</span>
+            <span>
+              {% if payment and payment.Payment_Status == 'Paid' %}
+                <span class="badge badge-available">Paid</span>
+              {% else %}
+                <span class="badge" style="background: #FFF8E6; color: #B7791F;">Pending (COD)</span>
+              {% endif %}
+            </span>
+          </div>
+
+          <div class="bill-row total-row">
+            <span>Total Amount</span>
+            <span class="bill-total-price">₹{{ "%.2f"|format(order.Total_Amount) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

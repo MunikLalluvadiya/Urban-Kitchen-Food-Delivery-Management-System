@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Home{% endblock %} | Urban Kitchen – Food & Beverage</title>
+  <meta name="description" content="Urban Kitchen - Premium artisanal catering, fresh meals delivered straight to your door with love and culinary excellence.">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}">
+
+  <!-- Google Fonts: Poppins -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Sticky Navbar -->
+  <header class="navbar-wrapper">
+    <div class="container">
+      <nav class="navbar" aria-label="Main Navigation">
+        <a href="{{ url_for('home') }}" class="nav-brand" title="Urban Kitchen – Food & Beverage">
+          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Urban Kitchen Logo" class="brand-logo">
+          <div class="brand-text">
+            <span class="brand-title">Urban Kitchen</span>
+            <span class="brand-sub">Food & Beverage</span>
+          </div>
+        </a>
+
+        <ul class="nav-menu">
+          <li><a href="{{ url_for('home') }}" class="nav-link {% if request.endpoint == 'home' %}active{% endif %}">Home</a></li>
+          <li><a href="{{ url_for('restaurants') }}" class="nav-link {% if request.endpoint in ('restaurants', 'restaurant_menu') %}active{% endif %}">Restaurants</a></li>
+          {% if current_user %}
+            <li><a href="{{ url_for('orders') }}" class="nav-link {% if request.endpoint in ('orders', 'order_detail') %}active{% endif %}">My Orders</a></li>
+          {% endif %}
+          <li><a href="{{ url_for('delivery_dashboard' if current_agent else 'delivery_login') }}" class="nav-link">Delivery Portal</a></li>
+          <li><a href="{{ url_for('admin_dashboard' if is_admin else 'admin_login') }}" class="nav-link">Manager</a></li>
+        </ul>
+
+        <div class="nav-actions">
+          <!-- Cart Icon with Live Badge -->
+          <a href="{{ url_for('view_cart') }}" class="cart-btn" aria-label="View Cart" title="View Cart">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="21" r="1"></circle>
+              <circle cx="20" cy="21" r="1"></circle>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+            </svg>
+            {% if cart_count > 0 %}
+              <span class="cart-badge">{{ cart_count }}</span>
+            {% endif %}
+          </a>
+
+          <!-- Customer Auth / Profile Pill Button -->
+          {% if current_user %}
+            <div class="user-dropdown">
+              <button class="user-pill" type="button" aria-haspopup="true" aria-expanded="false">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>{{ current_user.Name.split(' ')[0] }}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <ul class="dropdown-menu">
+                <li><a href="{{ url_for('profile') }}" class="dropdown-item">My Profile</a></li>
+                <li><a href="{{ url_for('orders') }}" class="dropdown-item">Orders & Tracking</a></li>
+                <li class="dropdown-divider"></li>
+                <li><a href="{{ url_for('logout') }}" class="dropdown-item text-danger">Sign Out</a></li>
+              </ul>
+            </div>
+          {% else %}
+            <a href="{{ url_for('auth', tab='login') }}" class="btn btn-primary btn-sm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                <polyline points="10 17 15 12 10 7"></polyline>
+                <line x1="15" y1="12" x2="3" y2="12"></line>
+              </svg>
+              Login / Register
+            </a>
+          {% endif %}
+
+          <!-- Mobile Hamburger Toggle -->
+          <button class="mobile-menu-toggle" type="button" aria-label="Toggle navigation">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Mobile Drawer -->
+  <aside class="mobile-nav-drawer" aria-label="Mobile Navigation">
+    <div class="mobile-drawer-header">
+      <div class="nav-brand">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Urban Kitchen Logo" class="brand-logo" style="width: 36px; height: 36px;">
+        <span class="brand-title" style="font-size: 16px;">Urban Kitchen</span>
+      </div>
+      <button class="drawer-close" aria-label="Close menu">&times;</button>
+    </div>
+    <ul class="mobile-links">
+      <li><a href="{{ url_for('home') }}">Home</a></li>
+      <li><a href="{{ url_for('restaurants') }}">Browse Restaurants</a></li>
+      <li><a href="{{ url_for('view_cart') }}">Cart ({{ cart_count }})</a></li>
+      {% if current_user %}
+        <li><a href="{{ url_for('orders') }}">My Orders</a></li>
+        <li><a href="{{ url_for('profile') }}">Profile</a></li>
+        <li><a href="{{ url_for('logout') }}">Sign Out</a></li>
+      {% else %}
+        <li><a href="{{ url_for('auth', tab='login') }}">Login</a></li>
+        <li><a href="{{ url_for('auth', tab='register') }}">Register</a></li>
+      {% endif %}
+      <li class="dropdown-divider"></li>
+      <li><a href="{{ url_for('delivery_dashboard' if current_agent else 'delivery_login') }}">Delivery Agent Portal</a></li>
+      <li><a href="{{ url_for('admin_dashboard' if is_admin else 'admin_login') }}">Restaurant Manager</a></li>
+    </ul>
+  </aside>
+
+  <!-- Flash Messages -->
+  <div class="container flash-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}" role="alert">
+            <span>{{ message }}</span>
+            <button class="alert-close" type="button" aria-label="Close">&times;</button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <!-- Page Content -->
+  <main class="page-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Dark Green Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="footer-logo-row">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Urban Kitchen Logo" class="footer-logo">
+            <span class="footer-brand-title">Urban Kitchen</span>
+          </div>
+          <p class="footer-brand-desc">
+            URBAN KITCHEN – Food & Beverage. Elevating dining experiences with fresh artisanal catering, gourmet culinary creations, and seamless doorstep delivery.
+          </p>
+        </div>
+
+        <div>
+          <h4 class="footer-heading">Quick Links</h4>
+          <ul class="footer-links">
+            <li><a href="{{ url_for('home') }}">Home</a></li>
+            <li><a href="{{ url_for('restaurants') }}">All Restaurants</a></li>
+            <li><a href="{{ url_for('view_cart') }}">My Cart</a></li>
+            {% if current_user %}
+              <li><a href="{{ url_for('orders') }}">Order Tracking</a></li>
+              <li><a href="{{ url_for('profile') }}">Account Settings</a></li>
+            {% else %}
+              <li><a href="{{ url_for('auth', tab='login') }}">Customer Sign In</a></li>
+              <li><a href="{{ url_for('auth', tab='register') }}">Create Account</a></li>
+            {% endif %}
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-heading">Staff & Partners</h4>
+          <ul class="footer-links">
+            <li><a href="{{ url_for('delivery_login') }}">Delivery Agent Login</a></li>
+            {% if current_agent %}
+              <li><a href="{{ url_for('delivery_dashboard') }}">Agent Deliveries</a></li>
+              <li><a href="{{ url_for('delivery_logout') }}">Agent Sign Out</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('admin_login') }}">Restaurant Manager</a></li>
+            {% if is_admin %}
+              <li><a href="{{ url_for('admin_dashboard') }}">Manager Dashboard</a></li>
+              <li><a href="{{ url_for('admin_logout') }}">Manager Sign Out</a></li>
+            {% endif %}
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-heading">Contact & Hours</h4>
+          <div class="footer-contact-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            <span>42 Green Avenue, Gourmet District, Bangalore, India</span>
+          </div>
+          <div class="footer-contact-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+            <span>+91 98765 43210</span>
+          </div>
+          <div class="footer-contact-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <span>catering@urbankitchen.com</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>&copy; 2026 Urban Kitchen – Food & Beverage. All rights reserved.</div>
+        <div>Fresh Ingredients • Seamless Delivery • Artisanal Catering</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Main JavaScript File -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

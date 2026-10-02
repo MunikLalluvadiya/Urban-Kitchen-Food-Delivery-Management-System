@@ -1,1 +1,2 @@
 Order_ID,User_Email,Restaurant_ID,Ordered_Items,Total_Amount,Order_Status,Order_Date
+ORD-1009,muniklalluvadiya@gmail.com,R104,F401:Paneer Tikka Angara:310.0:1;F404:Gulab Jamun with Rabdi:190.0:1,565.0,Delivered,2026-10-02

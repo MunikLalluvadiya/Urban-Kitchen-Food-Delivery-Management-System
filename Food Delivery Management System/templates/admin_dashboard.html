@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Restaurant Manager Dashboard – Urban Kitchen{% endblock %}
+
+{% block content %}
+<section style="padding: 40px 0 80px; background-color: var(--mint-light);">
+  <div class="container">
+
+    <!-- Manager Header Bar -->
+    <div class="restaurant-hero-header" style="margin-bottom: 32px;">
+      <div>
+        <span class="section-tag" style="margin-bottom: 4px;">Operations Hub</span>
+        <h1 style="font-size: 24px; margin-bottom: 4px;">Restaurant & Menu Operations</h1>
+        <p style="color: var(--text-muted); font-size: 13px;">Manage dining partners, add new restaurants, configure menus, and toggle real-time availability.</p>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span class="badge badge-available" style="padding: 6px 14px; font-size: 13px;">● Admin Mode Active</span>
+        <a href="{{ url_for('admin_logout') }}" class="btn btn-secondary btn-sm" style="color: #C53030;">
+          Sign Out
+        </a>
+      </div>
+    </div>
+
+    <!-- Analytics Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">🏪</div>
+        <div>
+          <div class="stat-val">{{ restaurants|length }}</div>
+          <div class="stat-label">Total Restaurants</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">🍲</div>
+        <div>
+          <div class="stat-val">{{ total_items }}</div>
+          <div class="stat-label">Total Menu Items</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">📦</div>
+        <div>
+          <div class="stat-val">{{ total_orders }}</div>
+          <div class="stat-label">Total Orders Placed</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div>
+          <div class="stat-val">₹{{ "%.0f"|format(total_revenue) }}</div>
+          <div class="stat-label">Gross Platform Revenue</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Grid: Add Restaurant Form + Menu Management -->
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 32px; align-items: flex-start; margin-bottom: 40px;">
+      <!-- Add Restaurant Form -->
+      <div class="cart-table-card">
+        <h3 style="font-size: 17px; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">
+          Add New Restaurant
+        </h3>
+
+        <form action="{{ url_for('admin_add_restaurant') }}" method="POST">
+          <div class="form-group">
+            <label for="restaurant_id" class="form-label">Restaurant ID</label>
+            <input type="text" id="restaurant_id" name="restaurant_id" class="form-control" placeholder="e.g. R105" required>
+          </div>
+
+          <div class="form-group">
+            <label for="restaurant_name" class="form-label">Restaurant Name</label>
+            <input type="text" id="restaurant_name" name="restaurant_name" class="form-control" placeholder="e.g. Olive & Thyme Bistro" required>
+          </div>
+
+          <div class="form-group">
+            <label for="location" class="form-label">Location / City Area</label>
+            <input type="text" id="location" name="location" class="form-control" placeholder="e.g. Indiranagar, Bangalore" required>
+          </div>
+
+          <div class="form-group">
+            <label for="rating" class="form-label">Initial Rating (0.0 - 5.0)</label>
+            <input type="number" step="0.1" min="0" max="5" id="rating" name="rating" class="form-control" value="4.8" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            + Create Restaurant
+          </button>
+        </form>
+      </div>
+
+      <!-- Select Restaurant & Add Food Item -->
+      <div class="cart-table-card">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 14px; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h3 style="font-size: 17px;">Manage Restaurant Menu</h3>
+            <div style="font-size: 12px; color: var(--text-muted);">Select a restaurant to modify its dishes</div>
+          </div>
+
+          <!-- Restaurant Selector Dropdown -->
+          <form action="{{ url_for('admin_dashboard') }}" method="GET" style="display: flex; gap: 8px;">
+            <select name="restaurant_id" class="form-control" style="width: auto; min-width: 200px;" onchange="this.form.submit()">
+              {% for r in restaurants %}
+                <option value="{{ r.Restaurant_ID }}" {% if selected_restaurant and selected_restaurant.Restaurant_ID == r.Restaurant_ID %}selected{% endif %}>
+                  {{ r.Restaurant_Name }} ({{ r.Restaurant_ID }})
+                </option>
+              {% endfor %}
+            </select>
+          </form>
+        </div>
+
+        {% if selected_restaurant %}
+          <!-- Add Food Item Accordion / Form -->
+          <details style="background: var(--mint-light); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 24px; border: 1px solid var(--mint-border);">
+            <summary style="font-weight: 600; cursor: pointer; color: var(--primary);">
+              + Add New Food Item to {{ selected_restaurant.Restaurant_Name }}
+            </summary>
+            
+            <form action="{{ url_for('admin_add_food_item') }}" method="POST" style="margin-top: 16px;">
+              <input type="hidden" name="restaurant_id" value="{{ selected_restaurant.Restaurant_ID }}">
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                  <label class="form-label">Food ID</label>
+                  <input type="text" name="food_id" class="form-control" placeholder="e.g. F501" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Food Name</label>
+                  <input type="text" name="food_name" class="form-control" placeholder="e.g. Mediterranean Bowl" required>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                  <label class="form-label">Category</label>
+                  <input type="text" name="category" class="form-control" placeholder="e.g. Main Course, Starters" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Price (₹)</label>
+                  <input type="number" step="0.5" min="0" name="price" class="form-control" placeholder="280.00" required>
+                </div>
+              </div>
+
+              <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="add_avail" name="availability" value="true" checked style="accent-color: var(--primary); width: 16px; height: 16px;">
+                <label for="add_avail" style="font-size: 13px; font-weight: 500; cursor: pointer;">Available immediately in menu</label>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-sm">
+                Add Dish to Menu
+              </button>
+            </form>
+          </details>
+
+          <!-- Current Menu Items Table -->
+          <h4 style="font-size: 15px; margin-bottom: 12px;">Current Dishes ({{ selected_restaurant.List_Of_FoodItems|length }})</h4>
+          
+          {% if selected_restaurant.List_Of_FoodItems %}
+            <div style="overflow-x: auto;">
+              <table class="cart-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Dish</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Availability</th>
+                    <th style="text-align: right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in selected_restaurant.List_Of_FoodItems %}
+                    <tr>
+                      <td style="font-weight: 600; font-size: 13px;">{{ item.Food_ID }}</td>
+                      <td>
+                        <div style="font-weight: 600; font-size: 14px;">{{ item.Food_Name }}</div>
+                      </td>
+                      <td>
+                        <span class="badge" style="background: var(--mint-bg); color: var(--primary);">
+                          {{ item.Category }}
+                        </span>
+                      </td>
+                      <td>
+                        <!-- Quick Price Update Form -->
+                        <form action="{{ url_for('admin_update_food_item') }}" method="POST" style="display: flex; align-items: center; gap: 6px; margin: 0;">
+                          <input type="hidden" name="restaurant_id" value="{{ selected_restaurant.Restaurant_ID }}">
+                          <input type="hidden" name="food_id" value="{{ item.Food_ID }}">
+                          <span>₹</span>
+                          <input type="number" step="1" name="price" value="{{ item.Price|int }}" style="width: 68px; padding: 4px 6px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-subtle);">
+                          <button type="submit" class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px;" title="Update Price">Save</button>
+                        </form>
+                      </td>
+                      <td>
+                        <!-- 1-Click Availability Toggle Form -->
+                        <form action="{{ url_for('admin_toggle_availability') }}" method="POST" style="margin: 0;">
+                          <input type="hidden" name="restaurant_id" value="{{ selected_restaurant.Restaurant_ID }}">
+                          <input type="hidden" name="food_id" value="{{ item.Food_ID }}">
+                          <input type="hidden" name="current_status" value="{{ item.Availability }}">
+                          {% if item.Availability %}
+                            <button type="submit" class="badge badge-available" style="border: none; cursor: pointer;" title="Click to mark Out of Stock">
+                              ● Available
+                            </button>
+                          {% else %}
+                            <button type="submit" class="badge badge-unavailable" style="border: none; cursor: pointer;" title="Click to mark Available">
+                              ✕ Out of Stock
+                            </button>
+                          {% endif %}
+                        </form>
+                      </td>
+                      <td style="text-align: right;">
+                        <!-- Remove Food Item -->
+                        <form action="{{ url_for('admin_remove_food_item') }}" method="POST" onsubmit="return confirm('Remove {{ item.Food_Name }} from {{ selected_restaurant.Restaurant_Name }}?');" style="display: inline-block; margin: 0;">
+                          <input type="hidden" name="restaurant_id" value="{{ selected_restaurant.Restaurant_ID }}">
+                          <input type="hidden" name="food_id" value="{{ item.Food_ID }}">
+                          <button type="submit" class="btn btn-secondary btn-sm" style="color: #C53030; padding: 4px 10px;" title="Delete Item">
+                            &times; Delete
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 14px;">
+              No dishes in this restaurant's menu yet. Use the form above to add dishes.
+            </div>
+          {% endif %}
+        {% else %}
+          <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            Create your first restaurant using the form on the left!
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

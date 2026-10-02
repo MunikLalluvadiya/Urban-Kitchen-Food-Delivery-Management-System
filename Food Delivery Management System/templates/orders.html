@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}My Orders – Urban Kitchen{% endblock %}
+
+{% block content %}
+<section style="padding: 40px 0 80px; background-color: var(--mint-light);">
+  <div class="container">
+    <div style="margin-bottom: 28px;">
+      <h1 class="section-heading" style="margin-bottom: 4px;">My Orders & Tracking</h1>
+      <p style="color: var(--text-muted); font-size: 14px;">Monitor current meal preparation, transit status, and view past order history.</p>
+    </div>
+
+    <!-- Tabs: Active vs History -->
+    <div class="order-tabs">
+      <button type="button" class="order-tab-btn {% if active_tab == 'active' %}active{% endif %}" onclick="switchOrderTab('active')">
+        Active Orders ({{ active_orders|length }})
+      </button>
+      <button type="button" class="order-tab-btn {% if active_tab == 'history' %}active{% endif %}" onclick="switchOrderTab('history')">
+        Order History ({{ history_orders|length }})
+      </button>
+    </div>
+
+    <!-- Active Orders Panel -->
+    <div id="active-orders-panel" style="display: {% if active_tab == 'active' %}block{% else %}none{% endif %};">
+      {% if active_orders %}
+        {% for o in active_orders %}
+          <div class="order-card">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 14px;">
+              <div>
+                <span class="section-tag" style="margin-bottom: 4px;">{{ o.Order_ID }}</span>
+                <h3 style="font-size: 18px;">{{ o.Restaurant_Name }}</h3>
+                <div style="font-size: 12px; color: var(--text-muted);">Ordered on {{ o.Order_Date }}</div>
+              </div>
+
+              <div style="text-align: right;">
+                {% if o.Order_Status == 'Preparing' %}
+                  <span class="badge" style="background: var(--status-prep-bg); color: var(--status-prep-text); font-size: 13px; padding: 6px 14px;">
+                    🍳 Preparing
+                  </span>
+                {% elif o.Order_Status == 'Accepted' %}
+                  <span class="badge" style="background: var(--status-accept-bg); color: var(--status-accept-text); font-size: 13px; padding: 6px 14px;">
+                    ✓ Accepted by Kitchen
+                  </span>
+                {% elif o.Order_Status == 'Out for Delivery' %}
+                  <span class="badge" style="background: var(--status-out-bg); color: var(--status-out-text); font-size: 13px; padding: 6px 14px;">
+                    🛵 Out for Delivery
+                  </span>
+                {% endif %}
+                <div style="font-size: 17px; font-weight: 700; color: var(--primary); margin-top: 6px;">
+                  ₹{{ "%.2f"|format(o.Total_Amount) }}
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 13px; color: var(--text-body);">
+                <strong>Items:</strong>
+                {% for item in o.Ordered_Items %}
+                  {{ item.Food_Name }} &times; {{ item.Quantity }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <a href="{{ url_for('order_detail', order_id=o.Order_ID) }}" class="btn btn-outline btn-sm">
+                View Tracking & Details
+              </a>
+
+              {% if o.Order_Status in ('Preparing', 'Accepted') %}
+                <form action="{{ url_for('cancel_order', order_id=o.Order_ID) }}" method="POST" onsubmit="return confirm('Are you sure you want to cancel order #{{ o.Order_ID }}?');" style="margin: 0;">
+                  <button type="submit" class="btn btn-secondary btn-sm" style="color: #C53030;">
+                    Cancel Order
+                  </button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div style="background: #FFFFFF; border-radius: var(--radius-md); padding: 60px 20px; text-align: center; border: 1px solid var(--border-subtle);">
+          <div style="font-size: 48px; margin-bottom: 12px;">🍽️</div>
+          <h3 style="font-size: 20px; margin-bottom: 6px;">No Active Orders</h3>
+          <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">You do not have any orders in transit right now.</p>
+          <a href="{{ url_for('restaurants') }}" class="btn btn-primary btn-sm">Order Food Now</a>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Order History Panel -->
+    <div id="history-orders-panel" style="display: {% if active_tab == 'history' %}block{% else %}none{% endif %};">
+      {% if history_orders %}
+        {% for o in history_orders %}
+          <div class="order-card" style="opacity: {% if o.Order_Status == 'Cancelled' %}0.85{% else %}1{% endif %};">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+              <div>
+                <span class="section-tag" style="margin-bottom: 4px;">{{ o.Order_ID }}</span>
+                <h3 style="font-size: 18px;">{{ o.Restaurant_Name }}</h3>
+                <div style="font-size: 12px; color: var(--text-muted);">{{ o.Order_Date }}</div>
+              </div>
+
+              <div style="text-align: right;">
+                {% if o.Order_Status == 'Delivered' %}
+                  <span class="badge badge-available" style="font-size: 13px; padding: 6px 14px;">
+                    ✓ Delivered
+                  </span>
+                {% else %}
+                  <span class="badge badge-unavailable" style="font-size: 13px; padding: 6px 14px;">
+                    ✕ Cancelled
+                  </span>
+                {% endif %}
+                <div style="font-size: 17px; font-weight: 700; color: var(--text-main); margin-top: 6px;">
+                  ₹{{ "%.2f"|format(o.Total_Amount) }}
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div style="font-size: 13px; color: var(--text-body);">
+                <strong>Items:</strong>
+                {% for item in o.Ordered_Items %}
+                  {{ item.Food_Name }} &times; {{ item.Quantity }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              </div>
+
+              <a href="{{ url_for('order_detail', order_id=o.Order_ID) }}" class="btn btn-secondary btn-sm">
+                View Receipt & Summary
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div style="background: #FFFFFF; border-radius: var(--radius-md); padding: 60px 20px; text-align: center; border: 1px solid var(--border-subtle);">
+          <div style="font-size: 48px; margin-bottom: 12px;">📜</div>
+          <h3 style="font-size: 20px; margin-bottom: 6px;">No Order History</h3>
+          <p style="color: var(--text-muted); font-size: 14px;">You haven't completed any previous orders yet.</p>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+</section>
+
+<script>
+  function switchOrderTab(tab) {
+    const activeBtn = document.querySelectorAll('.order-tab-btn')[0];
+    const historyBtn = document.querySelectorAll('.order-tab-btn')[1];
+    const activePanel = document.getElementById('active-orders-panel');
+    const historyPanel = document.getElementById('history-orders-panel');
+
+    if (tab === 'active') {
+      activeBtn.classList.add('active');
+      historyBtn.classList.remove('active');
+      activePanel.style.display = 'block';
+      historyPanel.style.display = 'none';
+    } else {
+      historyBtn.classList.add('active');
+      activeBtn.classList.remove('active');
+      historyPanel.style.display = 'block';
+      activePanel.style.display = 'none';
+    }
+  }
+</script>
+{% endblock %}

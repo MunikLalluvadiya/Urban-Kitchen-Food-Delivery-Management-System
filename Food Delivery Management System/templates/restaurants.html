@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Restaurants – Urban Kitchen{% endblock %}
+
+{% block content %}
+<section style="padding: 48px 0 80px; background-color: var(--mint-light);">
+  <div class="container">
+    <div class="text-center" style="margin-bottom: 32px;">
+      <div class="section-tag">Curated Culinary Partners</div>
+      <h1 class="section-heading">Browse Top Restaurants</h1>
+      <p class="section-subtitle mx-auto">
+        Discover artisanal kitchens offering gourmet catering, fresh salads, wood-fired pizzas, and heritage delicacies.
+      </p>
+    </div>
+
+    <!-- Filter & Search Bar -->
+    <form action="{{ url_for('restaurants') }}" method="GET" class="filter-bar">
+      <div class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" name="q" value="{{ query }}" class="search-input" placeholder="Search by restaurant name or location...">
+      </div>
+
+      <div class="rating-filter-group">
+        <label for="rating-filter" class="rating-filter-label">Min Rating:</label>
+        <select id="rating-filter" name="rating" class="rating-select" onchange="this.form.submit()">
+          <option value="0" {% if min_rating == 0.0 %}selected{% endif %}>All Ratings</option>
+          <option value="4.0" {% if min_rating == 4.0 %}selected{% endif %}>4.0+ Stars</option>
+          <option value="4.5" {% if min_rating == 4.5 %}selected{% endif %}>4.5+ Stars</option>
+          <option value="4.8" {% if min_rating == 4.8 %}selected{% endif %}>4.8+ Stars</option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        {% if query or min_rating > 0 %}
+          <a href="{{ url_for('restaurants') }}" class="btn btn-secondary btn-sm">Clear</a>
+        {% endif %}
+      </div>
+    </form>
+
+    <!-- Restaurants Grid -->
+    {% if restaurants %}
+      <div class="restaurant-grid">
+        {% for r in restaurants %}
+          <div class="restaurant-card">
+            <div class="restaurant-banner">
+              <div style="text-align: center;">
+                <div style="font-size: 28px; margin-bottom: 6px;">🍽️</div>
+                <div style="font-size: 13px; font-weight: 600; opacity: 0.9; letter-spacing: 0.5px;">{{ r.Location }}</div>
+              </div>
+              <div class="restaurant-rating-badge">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+                <span>{{ "%.1f"|format(r.Rating) }}</span>
+              </div>
+            </div>
+
+            <div class="restaurant-body">
+              <h3 class="restaurant-name">{{ r.Restaurant_Name }}</h3>
+              <div class="restaurant-loc">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>{{ r.Location }}</span>
+              </div>
+
+              <div class="restaurant-footer">
+                <span class="restaurant-items-count">{{ r.Total_Items }} culinary items</span>
+                <a href="{{ url_for('restaurant_menu', restaurant_id=r.Restaurant_ID) }}" class="btn btn-primary btn-sm">
+                  <span>View Menu</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="background: #FFFFFF; border-radius: var(--radius-md); padding: 60px 20px; text-align: center; border: 1px solid var(--border-subtle);">
+        <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
+        <h3 style="font-size: 20px; margin-bottom: 8px;">No matching restaurants found</h3>
+        <p style="color: var(--text-muted); margin-bottom: 24px;">Try searching with different keywords or lowering the rating filter.</p>
+        <a href="{{ url_for('restaurants') }}" class="btn btn-primary btn-sm">Reset Filters</a>
+      </div>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}
