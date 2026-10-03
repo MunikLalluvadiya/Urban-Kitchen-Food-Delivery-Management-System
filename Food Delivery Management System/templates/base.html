@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Home{% endblock %} | Urban Kitchen – Food & Beverage</title>
   <meta name="description" content="Urban Kitchen - Premium artisanal catering, fresh meals delivered straight to your door with love and culinary excellence.">
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}">
+  <link rel="icon" type="image/png" href="/images/logo.png">
 
   <!-- Google Fonts: Poppins -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="/css/style.css">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -23,7 +23,7 @@
     <div class="container">
       <nav class="navbar" aria-label="Main Navigation">
         <a href="{{ url_for('home') }}" class="nav-brand" title="Urban Kitchen – Food & Beverage">
-          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Urban Kitchen Logo" class="brand-logo">
+          <img src="/images/logo.png" alt="Urban Kitchen Logo" class="brand-logo">
           <div class="brand-text">
             <span class="brand-title">Urban Kitchen</span>
             <span class="brand-sub">Food & Beverage</span>
@@ -101,7 +101,7 @@
   <aside class="mobile-nav-drawer" aria-label="Mobile Navigation">
     <div class="mobile-drawer-header">
       <div class="nav-brand">
-        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Urban Kitchen Logo" class="brand-logo" style="width: 36px; height: 36px;">
+        <img src="/images/logo.png" alt="Urban Kitchen Logo" class="brand-logo" style="width: 36px; height: 36px;">
         <span class="brand-title" style="font-size: 16px;">Urban Kitchen</span>
       </div>
       <button class="drawer-close" aria-label="Close menu">&times;</button>
@@ -149,7 +149,7 @@
       <div class="footer-grid">
         <div class="footer-brand">
           <div class="footer-logo-row">
-            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Urban Kitchen Logo" class="footer-logo">
+            <img src="/images/logo.png" alt="Urban Kitchen Logo" class="footer-logo">
             <span class="footer-brand-title">Urban Kitchen</span>
           </div>
           <p class="footer-brand-desc">
@@ -222,7 +222,7 @@
   </footer>
 
   <!-- Main JavaScript File -->
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script src="/js/main.js"></script>
   {% block extra_scripts %}{% endblock %}
 </body>
 </html>

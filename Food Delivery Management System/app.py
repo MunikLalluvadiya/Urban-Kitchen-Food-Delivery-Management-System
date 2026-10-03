@@ -1,6 +1,6 @@
 import functools
 import re
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_from_directory
 
 import config
 from User import User, _read_rows as _read_user_rows
@@ -24,8 +24,14 @@ from delivery import (
 )
 from utils import calculate_bill
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="public", static_url_path="")
 app.secret_key = config.SECRET_KEY
+
+
+@app.route("/static/<path:filename>")
+def serve_static(filename):
+    """Fallback route ensuring backward-compatibility for /static/<filename> requests."""
+    return send_from_directory("public", filename)
 
 
 # ---------------------------------------------------------------
