@@ -1,8 +1,4 @@
-import csv
-import os
 from order import update_status_by_order_id, get_all_orders, get_order_by_id
-
-ORDERS_FILE = "orders.csv"
 
 
 # ---------------------------------------------------------------

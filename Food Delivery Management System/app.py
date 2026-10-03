@@ -3,7 +3,8 @@ import re
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_from_directory
 
 import config
-from User import User, _read_rows as _read_user_rows
+import db
+from User import User
 from restaurant import (
     Restaurant, get_all_restaurants, search_restaurants,
     get_restaurant_by_id, add_new_restaurant, ensure_restaurant_file
@@ -35,7 +36,7 @@ def serve_static(filename):
 
 
 # ---------------------------------------------------------------
-# Startup Checks: ensure all CSV files have headers
+# Startup Checks: verify storage readiness
 # ---------------------------------------------------------------
 @app.before_request
 def ensure_files():
@@ -221,15 +222,8 @@ def register():
         flash("Password should be at least 6 characters long.", "danger")
         return redirect(url_for("auth", tab="register"))
 
-    # Auto-generate next numeric User_Id
-    existing_rows = _read_user_rows()
-    highest_id = 100
-    for r in existing_rows:
-        if r and r[0].isdigit():
-            val = int(r[0])
-            if val > highest_id:
-                highest_id = val
-    new_user_id = highest_id + 1
+    # Auto-generate next numeric User_Id from Supabase
+    new_user_id = db.db_generate_user_id()
 
     user = User()
     ok, message = user.register_user(new_user_id, name, int(clean_phone), email, address, password)
@@ -624,24 +618,13 @@ def profile():
             flash("All profile fields are required.", "danger")
             return redirect(url_for("profile"))
 
-        # Update in user.csv using User helpers
-        user_rows = _read_user_rows()
-        updated = False
-        for row in user_rows:
-            if row[0] == str(user.User_Id):
-                row[1] = new_name
-                row[2] = new_phone
-                row[4] = new_address
-                updated = True
-                break
-
-        if updated:
-            from User import _write_rows as _write_user_rows
-            _write_user_rows(user_rows)
+        # Update profile directly in Supabase via db.py
+        try:
+            db.db_update_user_profile(user.User_Id, new_name, new_phone, new_address)
             session["user_name"] = new_name
             flash("Profile details updated successfully!", "success")
-        else:
-            flash("Unable to update profile.", "danger")
+        except Exception as e:
+            flash(f"Unable to update profile: {e}", "danger")
 
         return redirect(url_for("profile"))
 

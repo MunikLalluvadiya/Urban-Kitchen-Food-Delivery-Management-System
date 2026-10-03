@@ -1,4 +1,4 @@
-import csv
+import db
 from FoodItem import FoodItem
 
 
@@ -10,27 +10,11 @@ class Cart:
         self.Restaurant_ID = None      # which restaurant this cart belongs to
 
     # ===========================================================
-    # Internal helper: look up one food item in restaurant.csv
+    # Internal helper: look up one food item in Supabase via db.py
     # Returns (FoodItem or None, is_available)
     # ===========================================================
     def _find_item(self, restaurant_id, food_id):
-        with open("restaurant.csv", "r", newline="") as file:
-            reader = csv.reader(file)
-            next(reader, None)
-            for row in reader:
-                if row and row[0] == restaurant_id:
-                    items_str = row[4] if len(row) > 4 else ""
-                    if items_str:
-                        for item_str in items_str.split(";"):
-                            parts = item_str.split(":")
-                            if len(parts) != 5:
-                                continue
-                            fid, fname, category, price, availability = parts
-                            if fid == food_id:
-                                item = FoodItem(fid, fname, category, float(price), availability == "True")
-                                return item, availability == "True"
-                    break
-        return None, False
+        return db.db_get_food_item(restaurant_id, food_id)
 
     # ===========================================================
     # UI-FRIENDLY METHODS: parameters in, (success, message) out.

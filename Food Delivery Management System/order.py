@@ -1,7 +1,6 @@
 from datetime import date
 import db
 
-ORDERS_FILE = "orders.csv"
 HEADER = ["Order_ID", "User_Email", "Restaurant_ID", "Ordered_Items", "Total_Amount", "Order_Status", "Order_Date"]
 
 

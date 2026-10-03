@@ -61,6 +61,18 @@ def db_get_all_user_rows():
         return []
 
 
+def db_generate_user_id():
+    """Auto-generates the next sequential numeric User ID from Supabase records."""
+    rows = db_get_all_user_rows()
+    highest_id = 100
+    for r in rows:
+        if r and str(r[0]).isdigit():
+            val = int(r[0])
+            if val > highest_id:
+                highest_id = val
+    return highest_id + 1
+
+
 def db_get_user_by_email(email):
     """Returns user dict or None."""
     try:
@@ -115,6 +127,17 @@ def db_update_user_field(email, field_name, new_value):
     val = new_value.strip().lower() if col == "email" else str(new_value).strip()
     supabase = get_supabase()
     supabase.table("users").update({col: val}).eq("email", email.strip().lower()).execute()
+    return True
+
+
+def db_update_user_profile(user_id, name, phone, address):
+    """Updates name, phone_number, and address for a user in Supabase by user_id."""
+    supabase = get_supabase()
+    supabase.table("users").update({
+        "name": str(name).strip(),
+        "phone_number": str(phone).strip(),
+        "address": str(address).strip()
+    }).eq("user_id", str(user_id).strip()).execute()
     return True
 
 
@@ -206,6 +229,38 @@ def db_get_food_items_for_restaurant(restaurant_id):
     except Exception as e:
         print(f"[db] Error getting food items: {e}")
         return []
+
+
+def db_get_food_item(restaurant_id, food_id):
+    """Looks up a single food item by restaurant_id and food_id in Supabase.
+    Returns (FoodItem, is_available) or (None, False).
+    """
+    from FoodItem import FoodItem
+
+    try:
+        supabase = get_supabase()
+        res = (
+            supabase.table("food_items")
+            .select("*")
+            .eq("restaurant_id", str(restaurant_id).strip())
+            .eq("food_id", str(food_id).strip())
+            .execute()
+        )
+        if res.data:
+            fi = res.data[0]
+            avail = bool(fi.get("availability", True))
+            item = FoodItem(
+                str(fi.get("food_id", "")),
+                str(fi.get("food_name", "")),
+                str(fi.get("category", "")),
+                float(fi.get("price") or 0.0),
+                avail,
+            )
+            return item, avail
+        return None, False
+    except Exception as e:
+        print(f"[db] Error getting food item {food_id} in {restaurant_id}: {e}")
+        return None, False
 
 
 def db_add_restaurant(restaurant_id, restaurant_name, location, rating):

@@ -1,6 +1,5 @@
 import db
 
-PAYMENTS_FILE = "payments.csv"
 HEADER = ["Payment_ID", "Order_ID", "Payment_Method", "Payment_Status", "Amount"]
 
 

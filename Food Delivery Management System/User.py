@@ -2,7 +2,6 @@ import hashlib
 import os
 import db
 
-USER_FILE = "user.csv"
 HEADER = ["User_Id", "Name", "Phone_Number", "Email", "Address", "Password"]
 
 
@@ -16,7 +15,7 @@ def _hash_password(password):
 
 
 def _check_password(stored, password):
-    # Old rows in user.csv still hold plain-text passwords, so accept those too.
+    # Legacy rows might still hold plain-text passwords, so accept those too.
     if stored == password:
         return True
     if "$" in stored:

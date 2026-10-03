@@ -1,7 +1,6 @@
 import db
 from FoodItem import FoodItem
 
-RESTAURANT_FILE = "restaurant.csv"
 HEADER = ["Restaurant_ID", "Restaurant_Name", "Location", "Rating", "Food_Items"]
 
 
